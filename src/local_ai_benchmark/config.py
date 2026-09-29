@@ -39,10 +39,9 @@ def get_benchmark_database_settings() -> BenchmarkDatabaseSettings:
     """
     Load Benchmark Service PostgreSQL settings from environment variables.
 
-    Existing physical database and PostgreSQL role names are deliberately
-    preserved during the service-separation refactor. Renaming physical
-    database resources is a separate operational concern and is not required
-    to establish the application service boundary.
+    The default database and PostgreSQL role names are owned by the standalone
+    Benchmark Service. Environment variables may override those defaults for
+    development, testing, CI, or deployment environments.
 
     Returns:
         BenchmarkDatabaseSettings:
@@ -69,12 +68,12 @@ def get_benchmark_database_settings() -> BenchmarkDatabaseSettings:
                 "5432",
             )
         ),
-        # Preserve the existing physical database during this refactor.
+        # Benchmark Service-owned PostgreSQL database name.
         database_name=os.getenv(
             "LOCAL_AI_BENCHMARK_DB_NAME",
             "local_ai_benchmark_db",
         ),
-        # Preserve the existing PostgreSQL role for now as well.
+        # Benchmark Service-owned PostgreSQL login role.
         username=os.getenv(
             "LOCAL_AI_BENCHMARK_DB_USER",
             "local_ai_benchmark_app",
