@@ -1,9 +1,0 @@
-httpx
-sqlalchemy
-psycopg[binary]
-
-[dev]
-pytest
-pip-tools
-ruff
-alembic
