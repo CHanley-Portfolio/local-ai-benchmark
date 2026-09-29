@@ -19,7 +19,13 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from local_ai_benchmark import BenchmarkCaseExecution, BenchmarkRunSummary
 from local_ai_benchmark.config import get_benchmark_database_settings
+from local_ai_benchmark.inference import InferenceResult
+from local_ai_benchmark.persistence import (
+    BenchmarkRunPersistenceRequest,
+    BenchmarkRunRecorder,
+)
 from local_ai_benchmark.persistence.database import create_database_engine
 from local_ai_benchmark.persistence.models import (
     BenchmarkCaseResult,
@@ -251,3 +257,201 @@ def test_multiple_benchmark_runs_are_preserved_and_queryable(
     assert first_run.model_profile_id == second_run.model_profile_id
     assert first_run.hardware_profile_id == second_run.hardware_profile_id
     assert first_run.runtime_profile_id == second_run.runtime_profile_id
+
+
+
+def test_benchmark_run_recorder_persists_runner_execution_evidence(
+    benchmark_database_session: Session,
+) -> None:
+    """
+    Verify a successful runner summary becomes durable benchmark history.
+
+    The persistence layer should create a BenchmarkRun, BenchmarkCaseResult,
+    and BenchmarkPerformanceMetric without requiring BenchmarkRunner itself to
+    understand SQLAlchemy.
+    """
+
+    seed_ids = seed_benchmark_test_data(benchmark_database_session)
+
+    started_at = datetime(
+        2026,
+        1,
+        2,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+    completed_at = started_at + timedelta(seconds=2)
+
+    run_summary = BenchmarkRunSummary(
+        benchmark_suite_id=seed_ids.benchmark_suite_id,
+        status="completed",
+        started_at=started_at,
+        completed_at=completed_at,
+        case_executions=(
+            BenchmarkCaseExecution(
+                benchmark_case_id=seed_ids.benchmark_case_id,
+                status="completed",
+                started_at=started_at,
+                completed_at=completed_at,
+                inference_result=InferenceResult(
+                    model_name="seed_test_model:q4",
+                    response_text="ready",
+                    total_duration_ns=2_000_000_000,
+                    model_load_duration_ns=250_000_000,
+                    prompt_token_count=20,
+                    prompt_eval_duration_ns=1_000_000_000,
+                    output_token_count=10,
+                    output_eval_duration_ns=500_000_000,
+                    backend_metrics={
+                        "done_reason": "stop",
+                    },
+                ),
+            ),
+        ),
+        total_case_count=1,
+        completed_case_count=1,
+        failed_case_count=0,
+    )
+
+    persistence_result = BenchmarkRunRecorder(benchmark_database_session).persist_run(
+        BenchmarkRunPersistenceRequest(
+            benchmark_run_summary=run_summary,
+            model_profile_id=seed_ids.model_profile_id,
+            hardware_profile_id=seed_ids.hardware_profile_id,
+            runtime_profile_id=seed_ids.runtime_profile_id,
+            context_profile_id=seed_ids.context_profile_id,
+            source_git_commit="run-recorder-success",
+            run_mode="integration_test",
+            notes="Persisted from a synthetic BenchmarkRunner summary.",
+        )
+    )
+
+    assert persistence_result.benchmark_run_id > 0
+    assert len(persistence_result.benchmark_case_result_ids) == 1
+
+    persisted_run = benchmark_database_session.get(
+        BenchmarkRun,
+        persistence_result.benchmark_run_id,
+    )
+
+    assert persisted_run is not None
+    assert persisted_run.status == "completed"
+    assert persisted_run.source_git_commit == "run-recorder-success"
+    assert persisted_run.benchmark_suite_id == seed_ids.benchmark_suite_id
+
+    benchmark_case_result_id = persistence_result.benchmark_case_result_ids[0]
+
+    persisted_case_result = benchmark_database_session.get(
+        BenchmarkCaseResult,
+        benchmark_case_result_id,
+    )
+
+    assert persisted_case_result is not None
+    assert persisted_case_result.result_status == "completed"
+    assert persisted_case_result.raw_model_response == "ready"
+    assert persisted_case_result.normalized_quality_score is None
+    assert persisted_case_result.passed is None
+    assert persisted_case_result.error_type is None
+    assert persisted_case_result.error_message is None
+
+    persisted_performance = benchmark_database_session.get(
+        BenchmarkPerformanceMetric,
+        benchmark_case_result_id,
+    )
+
+    assert persisted_performance is not None
+    assert persisted_performance.total_duration_ns == 2_000_000_000
+    assert persisted_performance.model_load_duration_ns == 250_000_000
+    assert persisted_performance.prompt_token_count == 20
+    assert persisted_performance.prompt_eval_duration_ns == 1_000_000_000
+    assert persisted_performance.prompt_tokens_per_second == Decimal("20")
+    assert persisted_performance.output_token_count == 10
+    assert persisted_performance.output_eval_duration_ns == 500_000_000
+    assert persisted_performance.output_tokens_per_second == Decimal("20")
+    assert persisted_performance.backend_metrics == {
+        "done_reason": "stop",
+    }
+
+
+def test_benchmark_run_recorder_persists_failed_case_diagnostics(
+    benchmark_database_session: Session,
+) -> None:
+    """
+    Verify failed inference remains durable evidence without fake telemetry.
+    """
+
+    seed_ids = seed_benchmark_test_data(benchmark_database_session)
+
+    started_at = datetime(
+        2026,
+        1,
+        2,
+        13,
+        0,
+        tzinfo=timezone.utc,
+    )
+    completed_at = started_at + timedelta(seconds=1)
+
+    run_summary = BenchmarkRunSummary(
+        benchmark_suite_id=seed_ids.benchmark_suite_id,
+        status="completed_with_failures",
+        started_at=started_at,
+        completed_at=completed_at,
+        case_executions=(
+            BenchmarkCaseExecution(
+                benchmark_case_id=seed_ids.benchmark_case_id,
+                status="failed",
+                started_at=started_at,
+                completed_at=completed_at,
+                inference_result=None,
+                error_type="RuntimeError",
+                error_message="Synthetic persisted inference failure.",
+            ),
+        ),
+        total_case_count=1,
+        completed_case_count=0,
+        failed_case_count=1,
+    )
+
+    persistence_result = BenchmarkRunRecorder(benchmark_database_session).persist_run(
+        BenchmarkRunPersistenceRequest(
+            benchmark_run_summary=run_summary,
+            model_profile_id=seed_ids.model_profile_id,
+            hardware_profile_id=seed_ids.hardware_profile_id,
+            runtime_profile_id=seed_ids.runtime_profile_id,
+            context_profile_id=seed_ids.context_profile_id,
+            source_git_commit="run-recorder-failure",
+            run_mode="integration_test",
+        )
+    )
+
+    persisted_run = benchmark_database_session.get(
+        BenchmarkRun,
+        persistence_result.benchmark_run_id,
+    )
+
+    assert persisted_run is not None
+    assert persisted_run.status == "completed_with_failures"
+
+    benchmark_case_result_id = persistence_result.benchmark_case_result_ids[0]
+
+    persisted_case_result = benchmark_database_session.get(
+        BenchmarkCaseResult,
+        benchmark_case_result_id,
+    )
+
+    assert persisted_case_result is not None
+    assert persisted_case_result.result_status == "failed"
+    assert persisted_case_result.raw_model_response is None
+    assert persisted_case_result.error_type == "RuntimeError"
+    assert persisted_case_result.error_message == (
+        "Synthetic persisted inference failure."
+    )
+
+    persisted_performance = benchmark_database_session.get(
+        BenchmarkPerformanceMetric,
+        benchmark_case_result_id,
+    )
+
+    assert persisted_performance is None
