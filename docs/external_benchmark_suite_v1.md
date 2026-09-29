@@ -1,24 +1,25 @@
-# Local AI Router — External Benchmark Suite v1
+# Local AI Benchmark — External Benchmark Suite v1
 
 ## 1. Purpose
 
-The Local AI Router uses established external benchmarks alongside custom project-specific evaluations.
+The Benchmark Service uses established external benchmarks alongside custom project-specific evaluations.
 
 External benchmarks provide two benefits:
 
 1. They provide known datasets, evaluation rules, and expected answers that allow objective measurement.
 2. They allow locally measured model performance to be compared with published or community benchmark results when experimental configurations are sufficiently compatible.
 
-External benchmark scores do not replace Local AI Router workload testing.
+External benchmark scores do not replace consumer-specific workload testing, including Local AI Router workloads.
 
-A model may perform well on standardized academic benchmarks while performing poorly on the software-development, retrieval, project-context, structured-output, or routing workloads the Local AI Router actually needs.
+A model may perform well on standardized academic benchmarks while performing poorly on software-development, retrieval, project-context, structured-output, or routing workloads required by an optional consumer such as Local AI Router.
 
 The complete evaluation strategy therefore consists of:
 
 ```text
 External standardized benchmarks
             +
-Local AI Router project benchmarks
+Project-specific workload benchmarks
+(including Local AI Router consumer cases)
             +
 Hardware/performance measurements
 ```
@@ -31,7 +32,7 @@ External benchmarks are divided into three execution classes.
 
 ### Development suite
 
-A relatively small benchmark subset intended for frequent execution while developing the router.
+A relatively small benchmark subset intended for frequent execution while developing the Benchmark Service and evaluating candidate models.
 
 Goals:
 
@@ -220,7 +221,7 @@ It should not alone determine whether a model is suitable for normal conversatio
 
 IFEval measures whether a model actually follows explicit instructions.
 
-This is particularly relevant to the Local AI Router because applications require models to reliably obey:
+This is particularly relevant to Local AI Router as an optional consumer because its application workflows require models to reliably obey:
 
 * response formatting;
 * output constraints;
@@ -307,7 +308,7 @@ Executable test results should take precedence over subjective evaluation of whe
 
 Generated benchmark code must eventually execute inside an isolated environment.
 
-Do not execute arbitrary model-generated benchmark code directly against the main Local AI Router environment.
+Do not execute arbitrary model-generated benchmark code directly against the main Benchmark Service or development environment.
 
 A containerized or otherwise sandboxed execution method should be used when Issue #9 implements the benchmark runner.
 
@@ -418,7 +419,7 @@ Add LiveCodeBench after the base benchmark pipeline is functioning.
 
 LongBench v2 evaluates long-context understanding and reasoning using realistic multi-task problems.
 
-This benchmark is particularly relevant to the Local AI Router because one of the project's goals is to determine practical context limits based on quality rather than advertised context-window size.
+This benchmark is particularly relevant to the Benchmark Service and optional consumers such as Local AI Router because practical context limits should be determined by measured quality rather than advertised context-window size.
 
 ## Important distinction
 
@@ -468,7 +469,7 @@ Later Issue #11 will expand this into dedicated context-degradation experiments.
 
 JSONSchemaBench evaluates structured-output behavior using real-world JSON schemas.
 
-Reliable structured output is important because later Local AI Router components will require models to generate machine-consumable data for:
+Reliable structured output is important because the Benchmark Service and optional consumers such as Local AI Router may require models to generate machine-consumable data for:
 
 * routing decisions;
 * tool calls;
@@ -539,7 +540,7 @@ There is no need to run every schema during normal development.
 
 BFCL evaluates function and tool-calling behavior.
 
-This will eventually become relevant when the Local AI Router implements its controlled tools/actions framework.
+This becomes relevant when an optional consumer such as Local AI Router implements a controlled tools/actions framework.
 
 Potential capabilities include:
 
@@ -557,7 +558,7 @@ Deferred
 
 Issue #7 documents BFCL so the benchmark architecture anticipates tool evaluation.
 
-It should not be implemented until the Local AI Router has a stable tool schema and execution framework.
+It should not be implemented for Local AI Router workloads until that optional consumer has a stable tool schema and execution framework.
 
 At that point BFCL can become an external reference alongside our project-specific tool-selection dataset.
 
@@ -745,7 +746,7 @@ For this reason:
 
 * use multiple benchmarks for important capabilities;
 * include newer benchmarks such as LiveCodeBench;
-* maintain Local AI Router-specific unseen tests;
+* maintain consumer-specific unseen tests, including Local AI Router workloads;
 * avoid choosing models from one leaderboard result alone.
 
 External benchmarks provide useful evidence, not absolute proof of model quality.
@@ -851,7 +852,7 @@ Performance telemetry is specific to our hardware/runtime environment and must n
 
 # 22. Current baseline hardware
 
-The initial benchmark hardware profile is the Local AI Router development workstation.
+The initial benchmark hardware profile is the Benchmark Service development workstation.
 
 Primary inference hardware:
 
@@ -897,7 +898,7 @@ This reduces the risk that our own reimplementation changes benchmark semantics 
 
 # 24. Benchmark adapters
 
-Each external benchmark will eventually have an adapter responsible for translating benchmark-specific results into the Local AI Router benchmark schema.
+Each external benchmark will eventually have an adapter responsible for translating benchmark-specific results into the Local AI Benchmark schema.
 
 Example future structure:
 
@@ -945,9 +946,9 @@ This order begins with deterministic question-answer scoring, then instruction f
 
 ---
 
-# 26. Relationship to Local AI Router benchmarks
+# 26. Relationship to Local AI Router workloads
 
-The external suite does not directly test several important Local AI Router requirements.
+The external suite does not directly test several important workloads required by Local AI Router as an optional consumer.
 
 Custom tests will still be required for:
 
@@ -965,7 +966,7 @@ Custom tests will still be required for:
 * project isolation;
 * real Local AI development workflows.
 
-These tests form the Local AI Router benchmark suite and complement the external suite.
+These tests form the Local AI Router consumer-workload benchmark set and complement the external suite.
 
 ---
 
@@ -1009,7 +1010,7 @@ rather than simply choosing whichever model has the highest HumanEval+ score.
 
 # 28. Version-1 adopted suite
 
-The Local AI Router external benchmark suite v1 therefore adopts:
+The Local AI Benchmark external benchmark suite v1 therefore adopts:
 
 ## Active initial benchmarks
 
@@ -1054,4 +1055,4 @@ Local project benchmarks tell us whether a model is actually useful for this sys
 
 Performance telemetry tells us whether that usefulness is affordable on the target hardware.
 
-The Local AI Router should make model-selection decisions from all three forms of evidence rather than optimizing for a single leaderboard score.
+Optional consumers such as Local AI Router should make model-selection decisions from all three forms of evidence rather than optimizing for a single leaderboard score.
