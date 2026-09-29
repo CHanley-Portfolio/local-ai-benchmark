@@ -19,7 +19,7 @@ BENCHMARK_FIXTURE_DIRECTORY = PROJECT_ROOT / "benchmarks" / "fixtures"
 
 def load_local_benchmark_cases() -> list[dict]:
     """
-    Load the version-1 Local AI Router benchmark dataset.
+    Load the version-1 Local AI Benchmark dataset.
 
     Returns:
         list[dict]:
