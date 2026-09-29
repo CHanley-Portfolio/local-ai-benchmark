@@ -1,8 +1,8 @@
-# Local AI Router — Benchmark Database Design v1
+# Local AI Benchmark — Benchmark Database Design v1
 
 ## 1. Purpose
 
-The benchmark database provides durable relational storage for Local AI Router evaluation data.
+The benchmark database provides durable relational storage for Local AI Benchmark evaluation data.
 
 It replaces temporary benchmark information that would otherwise exist only in:
 
@@ -48,7 +48,7 @@ Future application data such as projects, conversations, messages, and memory ma
 Conceptually:
 
 ```text
-PostgreSQL database: local_ai_router
+PostgreSQL database: local_ai_benchmark_db
 
 benchmark schema
     model evaluation
@@ -58,15 +58,11 @@ benchmark schema
     metrics
     hardware/runtime profiles
 
-future application schema
-    projects
-    conversations
-    messages
-    memory
-    retrieval
+unrelated application data
+    remains owned by separate services and databases
 ```
 
-This gives the project logical separation without requiring multiple PostgreSQL servers or independent databases.
+This keeps Benchmark Service persistence independent from unrelated application data while still allowing the PostgreSQL server itself to host other databases when desired.
 
 ---
 
@@ -271,7 +267,7 @@ GPQA Diamond
 IFEval
 HumanEval+
 MBPP+
-Local AI Router
+Local AI Benchmark
 ```
 
 Suggested columns:
@@ -859,9 +855,9 @@ benchmark categories
 
 benchmark tags
 
-Local AI Router benchmark definition
+Local AI Benchmark project-specific benchmark definition
 
-Local AI Router v1 cases
+Local AI Benchmark v1 cases
 
 benchmark suite membership
 
@@ -885,7 +881,7 @@ Database tests should use a dedicated test database rather than the development 
 Conceptually:
 
 ```text
-local_ai_router
+local_ai_benchmark_db
     development database
 
 local_ai_benchmark_test
