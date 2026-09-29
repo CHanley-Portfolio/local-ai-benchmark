@@ -4,7 +4,8 @@ Idempotent seed support for benchmark integration testing.
 The seed data created here is deliberately synthetic.
 It exists only to give database integration tests a stable set of related benchmark configuration records without polluting real benchmark history.
 
-The public seeding function accepts an existing SQLAlchemy Session so tests and future tooling can control transactio boundaries themselves.
+The public seeding function accepts an existing SQLAlchemy Session so tests
+and future tooling can control transaction boundaries themselves.
 """
 
 from dataclasses import dataclass
@@ -74,7 +75,7 @@ def _get_or_create(
             ORM model class to query and potentially instantiate.
 
         lookup_values:
-            Column/value paris that identify teh seed record.
+            Column/value pairs that identify the seed record.
 
         create_values:
             Additional values required only when a new row must be created.
@@ -85,9 +86,10 @@ def _get_or_create(
 
     Notes:
         The function calls 'flush()' after insertion so generated primary keys
-        are immediately available to dependant seed records.
+        are immediately available to dependent seed records.
 
-        It deliberately does not commit. Transaction ownership remains with the caller.
+        It deliberately does not commit. Transaction ownership remains with
+        the caller.
     """
 
     filter_expressions = [
@@ -122,7 +124,7 @@ def seed_benchmark_test_data(database_session: Session) -> BenchmarkSeedIds:
 
     Args:
         database_session:
-            SQLAlchemy session connected to the benchamark test database.
+            SQLAlchemy session connected to the benchmark test database.
 
     Returns:
         BenchmarkSeedIds:
