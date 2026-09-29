@@ -46,7 +46,7 @@ class BenchmarkRun(BenchmarkBase):
     Every execution creates a new row. Existing completed benchmark runs are
     never overwritten when the same suite or model is tested again.
 
-    This append-oriented design allows the Local AI Router to compare model
+    This append-oriented design allows the Benchmark Service to compare model
     performance across time, configuration changes, software versions, and
     hardware environments.
     """
