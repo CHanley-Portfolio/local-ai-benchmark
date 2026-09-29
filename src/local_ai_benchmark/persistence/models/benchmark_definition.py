@@ -4,7 +4,7 @@ SQLAlchemy model describing the source and version of a benchmark.
 A benchmark definition identifies where benchmark cases originate.
 
 Examples include:
-- Local AI Router
+- Local AI Benchmark
 - MMLU-Pro
 - GPQA Diamond
 - IFEval
