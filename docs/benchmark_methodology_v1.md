@@ -1,8 +1,8 @@
-# Local AI Router Benchmark Methodology v1
+# Local AI Benchmark Methodology v1
 
 ## 1. Purpose
 
-The Local AI Router benchmark framework exists to measure whether a model, model configuration, routing strategy, runtime change, or context strategy improves the system for real project workloads.
+The Local AI Benchmark framework exists to measure whether a model, model configuration, runtime change, context strategy, or consumer-specific routing strategy improves performance for real project workloads.
 
 The benchmark system must support repeatable comparison over time.
 
@@ -297,7 +297,7 @@ If stochastic generation is intentionally tested, multiple trials should be reco
 
 ## 10. Normalized inference contracts
 
-Benchmark execution should use the Local AI Router's normalized inference contracts rather than communicating directly with a specific inference backend.
+Benchmark execution should use the Benchmark Service's normalized inference contracts rather than communicating directly with a specific inference backend.
 
 The benchmark runner constructs an:
 
@@ -354,14 +354,14 @@ max_output_tokens
 backend_options
 ```
 
-These names represent Local AI Router concepts.
+These names represent normalized Benchmark Service inference concepts.
 
 A backend adapter is responsible for converting them into the appropriate native fields.
 
 For example:
 
 ```text
-Local AI Router:
+Local AI Benchmark:
 thinking_enabled
 
 Ollama:
@@ -473,10 +473,10 @@ Software configuration must also be retained.
 
 Relevant values include:
 
-- Local AI Router version or Git commit;
+- Benchmark Service version or Git commit;
 - Ollama version;
 - inference backend;
-- Python version where router code participates;
+- Python version used by the Benchmark Service;
 - benchmark-suite version;
 - benchmark-case version;
 - operating-system environment;
@@ -829,13 +829,13 @@ reported date
 source-specific metadata
 ```
 
-An external score must never be represented as though it were produced by the Local AI Router's own hardware and benchmark runner.
+An external score must never be represented as though it were produced by the Benchmark Service's own hardware and benchmark runner.
 
 ---
 
 ## 27. External and project-specific benchmarks
 
-The Local AI Router uses two complementary benchmark sources.
+The Benchmark Service uses two complementary benchmark sources.
 
 ### Standard external benchmarks
 
@@ -845,7 +845,7 @@ These provide broader comparisons against common language-model tasks.
 
 ### Local project benchmarks
 
-Custom benchmark cases represent the workloads the Local AI Router is actually intended to perform.
+Custom benchmark cases represent project-specific workloads the Benchmark Service is configured to evaluate. The Local AI Router is one optional consumer whose workloads may be represented by these cases.
 
 Examples include:
 
@@ -922,7 +922,7 @@ This creates a durable record of what was tested, where it ran, how it was confi
 
 ## 30. Benchmark evolution
 
-Benchmark suites and scoring methods will evolve as the Local AI Router gains capabilities.
+Benchmark suites and scoring methods will evolve as the Benchmark Service and its optional consumers gain capabilities.
 
 Future suites may evaluate:
 
