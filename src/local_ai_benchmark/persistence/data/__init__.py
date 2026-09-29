@@ -1,17 +1,15 @@
 """
-Benchmark Service persistence infrastructure.
+Data contracts used by Benchmark Service persistence workflows.
 """
 
-from .data import (
+from .benchmark_run_persistence_request import (
     BenchmarkRunPersistenceRequest as BenchmarkRunPersistenceRequest,
 )
-from .data import (
+from .benchmark_run_persistence_result import (
     BenchmarkRunPersistenceResult as BenchmarkRunPersistenceResult,
 )
-from .run_recorder import BenchmarkRunRecorder as BenchmarkRunRecorder
 
 __all__ = [
     "BenchmarkRunPersistenceRequest",
     "BenchmarkRunPersistenceResult",
-    "BenchmarkRunRecorder",
 ]
