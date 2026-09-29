@@ -3,7 +3,7 @@ Alembic migration environment for Local AI Benchmark persistence.
 
 Alembic uses this module to:
 
-1. Connect to PostgreSQL using the application's existing database
+1. Connect to PostgreSQL using the Benchmark Service database
    configuration.
 2. Discover benchmark ORM tables through BenchmarkBase.metadata.
 3. Compare ORM metadata against the live PostgreSQL schema.
@@ -11,7 +11,7 @@ Alembic uses this module to:
 
 Database credentials are deliberately not stored in Alembic configuration
 files. The migration environment reuses the same environment-based settings
-as the application.
+as the Benchmark Service.
 """
 
 from logging.config import fileConfig
