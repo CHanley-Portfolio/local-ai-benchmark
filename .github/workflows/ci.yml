@@ -1,0 +1,75 @@
+name: CI
+
+# Validate the standalone Benchmark Service on pushes and pull requests.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Tests and Code Quality
+    runs-on: ubuntu-latest
+
+    # Integration tests deliberately run against a disposable PostgreSQL
+    # database owned entirely by this CI job.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: local_ai_benchmark_test
+          POSTGRES_USER: local_ai_benchmark_app
+          POSTGRES_PASSWORD: benchmark_ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U local_ai_benchmark_app -d local_ai_benchmark_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      LOCAL_AI_BENCHMARK_DB_HOST: 127.0.0.1
+      LOCAL_AI_BENCHMARK_DB_PORT: "5432"
+      LOCAL_AI_BENCHMARK_DB_NAME: local_ai_benchmark_test
+      LOCAL_AI_BENCHMARK_DB_USER: local_ai_benchmark_app
+      LOCAL_AI_BENCHMARK_DB_PASSWORD: benchmark_ci_password
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      # The Benchmark Service does not yet commit dependency lock files.
+      # Install the project plus its declared development dependencies from
+      # pyproject.toml until dependency locking is introduced explicitly.
+      - name: Install Benchmark Service and development dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Check dependency consistency
+        run: python -m pip check
+
+      # Build the disposable PostgreSQL test schema from the same versioned
+      # migrations used by local development before integration tests execute.
+      - name: Apply benchmark database migrations
+        run: alembic upgrade head
+
+      - name: Run Ruff lint checks
+        run: ruff check src tests migrations
+
+      - name: Check Ruff formatting
+        run: ruff format --check src tests migrations
+
+      - name: Run automated tests
+        run: python -m pytest -v
