@@ -1,7 +1,8 @@
 """
 Backend-independent inference request data.
 
-InferenceRequest represents the model execution settings understood by the Local AI Router itself.
+InferenceRequest represents normalized model execution settings understood by
+the Benchmark Service independently of any specific inference backend.
 
 Backend adapters such as OllamaClient are responsible for translating
 these application-level setting into backend-specific request payloads.
@@ -40,10 +41,8 @@ class InferenceRequest:
             Optional maximum number of generated tokens.
 
         backend_options:
-            Additional backend-specific configuration that does not yet have a normalized Local AI Router field.
-
-            This escape hatch should be used sparingly.
-            Common settings should eventually becaome explicit fields instead of accumulating here.
+            Additional backend-specific configuration that does not yet have a normalized
+            Benchmark Service inference field.
     """
 
     model_name: str

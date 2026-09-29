@@ -4,7 +4,7 @@ PostgreSQL integration tests for benchmark persistence.
 These tests exercise the real PostgreSQL schema rather than SQLAlchemy
 metadata alone.
 
-They are intentionally restricted to the ``local_ai_router_test`` database.
+They are intentionally restricted to the ``local_ai_benchmark_test`` database.
 All benchmark runs and result rows created by a test are wrapped in a
 transaction and rolled back afterward so repeated test execution does not
 pollute benchmark history.
@@ -38,7 +38,7 @@ def benchmark_database_session() -> Generator[Session, None, None]:
     Provide a transaction-isolated PostgreSQL integration-test session.
 
     The fixture skips automatically when database credentials are unavailable
-    or when the configured database is not ``local_ai_router_test``.
+    or when the configured database is not ``local_ai_benchmark_test``.
 
     This keeps the normal unit-test suite safe on machines and CI jobs that do
     not currently provide PostgreSQL integration infrastructure.
@@ -52,9 +52,9 @@ def benchmark_database_session() -> Generator[Session, None, None]:
 
     database_settings = get_benchmark_database_settings()
 
-    if database_settings.database_name != "local_ai_router_test":
+    if database_settings.database_name != "local_ai_benchmark_test":
         pytest.skip(
-            "PostgreSQL benchmark integration tests may only run against local_ai_router_test."
+            "PostgreSQL benchmark integration tests may only run against local_ai_benchmark_test."
         )
 
     database_engine = create_database_engine(database_settings)

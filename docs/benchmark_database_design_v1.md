@@ -411,7 +411,7 @@ A benchmark suite represents a collection of cases we choose to run together.
 Examples:
 
 ```text
-local_ai_router_v1
+local_ai_benchmark_v1
 
 development_standardized_v1
 
@@ -888,7 +888,7 @@ Conceptually:
 local_ai_router
     development database
 
-local_ai_router_test
+local_ai_benchmark_test
     automated integration-test database
 ```
 

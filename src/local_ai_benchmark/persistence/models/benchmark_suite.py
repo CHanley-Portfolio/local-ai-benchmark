@@ -4,7 +4,7 @@ SQLAlchemy model describing a versioned collection of benchmark cases.
 A suite represents the set of cases selected for one type of benchmark run.
 
 Examples include:
-- local_ai_router_v1
+- local_ai_benchmark_v1
 - development_standardized_v1
 - full_periodic_v1
 """

@@ -133,7 +133,7 @@ def seed_benchmark_test_data(database_session: Session) -> BenchmarkSeedIds:
         database_session,
         BenchmarkModel,
         {
-            "publisher": "local_ai_router_test",
+            "publisher": "local_ai_benchmark_test",
             "model_name": "seed_test_model",
         },
         {
@@ -190,11 +190,11 @@ def seed_benchmark_test_data(database_session: Session) -> BenchmarkSeedIds:
         database_session,
         BenchmarkDefinition,
         {
-            "benchmark_name": "local_ai_router_seed",
+            "benchmark_name": "local_ai_benchmark_seed",
             "benchmark_version": "1",
         },
         {
-            "evaluation_harness": "local_ai_router",
+            "evaluation_harness": "local_ai_benchmark",
             "description": (
                 "Synthetic benchmark definition used only for database integration testing."
             ),
@@ -234,7 +234,7 @@ def seed_benchmark_test_data(database_session: Session) -> BenchmarkSeedIds:
         database_session,
         BenchmarkSuite,
         {
-            "suite_name": "local_ai_router_seed",
+            "suite_name": "local_ai_benchmark_seed",
             "suite_version": 1,
         },
         {
@@ -317,7 +317,7 @@ def seed_benchmark_test_database() -> BenchmarkSeedIds:
     """
     Seed the configured test database and commit the transaction.
 
-    This convenience entry point refuses to run against any database other than 'local_ai_router_test'.
+    This convenience entry point refuses to run against any database other than 'local_ai_benchmark_test'.
     That guard prevents synthetic benchmark records from being accidentally inserted into the development database.
 
     Returns:
@@ -326,13 +326,13 @@ def seed_benchmark_test_database() -> BenchmarkSeedIds:
 
     Raises:
         RuntimeError:
-            If the configured database is not 'local_ai_router_test'.
+            If the configured database is not 'local_ai_benchmark_test'.
     """
 
     database_settings = get_benchmark_database_settings()
 
-    if database_settings.database_name != "local_ai_router_test":
-        raise RuntimeError("Benchmark test seed may only run against 'local_ai_router_test'.")
+    if database_settings.database_name != "local_ai_benchmark_test":
+        raise RuntimeError("Benchmark test seed may only run against 'local_ai_benchmark_test'.")
 
     database_engine = create_database_engine(database_settings)
     database_session_factory = create_database_session_factory(database_engine)

@@ -1,3 +1,7 @@
+"""
+The Benchmark Service passes a backend-independent InferenceRequest.
+"""
+
 from typing import Any
 
 import httpx
@@ -50,7 +54,7 @@ class OllamaClient:
         """
         Execute one chat inference request through Ollama.
 
-        The Local AI Router passes a backend-independent InferenceRequest.
+        The Local AI Benchmark passes a backend-independent InferenceRequest.
         This adapter translates those settings into Ollama's API format and then
         converts Ollama's raw JSON response into a stable InferenceResult.
 

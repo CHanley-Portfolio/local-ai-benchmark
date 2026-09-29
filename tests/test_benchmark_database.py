@@ -43,8 +43,8 @@ def test_database_settings_use_expected_local_defaults(monkeypatch) -> None:
 
     assert database_settings.host == "127.0.0.1"
     assert database_settings.port == 5432
-    assert database_settings.database_name == "local_ai_router"
-    assert database_settings.username == "local_ai_router_app"
+    assert database_settings.database_name == "local_ai_benchmark_db"
+    assert database_settings.username == "local_ai_benchmark_app"
     assert database_settings.password == "test-password"
 
 
@@ -73,8 +73,8 @@ def test_database_url_uses_psycopg_driver() -> None:
     database_settings = BenchmarkDatabaseSettings(
         host="127.0.0.1",
         port=5432,
-        database_name="local_ai_router",
-        username="local_ai_router_app",
+        database_name="local_ai_benchmark",
+        username="local_ai_benchmark_app",
         password="test-password",
     )
 
@@ -83,5 +83,5 @@ def test_database_url_uses_psycopg_driver() -> None:
     assert database_url.drivername == "postgresql+psycopg"
     assert database_url.host == "127.0.0.1"
     assert database_url.port == 5432
-    assert database_url.database == "local_ai_router"
-    assert database_url.username == "local_ai_router_app"
+    assert database_url.database == "local_ai_benchmark"
+    assert database_url.username == "local_ai_benchmark_app"

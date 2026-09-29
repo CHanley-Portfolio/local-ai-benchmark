@@ -1,5 +1,5 @@
 """
-Alembic migration environment for Local AI Router benchmark persistence.
+Alembic migration environment for Local AI Benchmark persistence.
 
 Alembic uses this module to:
 

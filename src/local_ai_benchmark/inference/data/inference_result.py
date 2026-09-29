@@ -1,9 +1,8 @@
 """
 Backend-independent inference result data.
 
-Inference backend expose different response formats.
-InferenceResult provides teh stable representation used by the Local AI Router, benchmark runner,
-API and persistence layers.
+InferenceResult provides the stable backend-independent representation used by
+the Benchmark Service and benchmark runner.
 """
 
 from dataclasses import dataclass

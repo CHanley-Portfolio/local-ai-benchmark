@@ -1,9 +1,5 @@
 """
-Configuration owned by the Benchmark Service.
-
-Benchmark persistence uses PostgreSQL independently of the runtime routing
-service. Database credentials and connection settings therefore belong to the
-Benchmark Service rather than ``local_ai_router``.
+Configuration owned by the standalone Local AI Benchmark Service.
 """
 
 import os
@@ -76,12 +72,12 @@ def get_benchmark_database_settings() -> BenchmarkDatabaseSettings:
         # Preserve the existing physical database during this refactor.
         database_name=os.getenv(
             "LOCAL_AI_BENCHMARK_DB_NAME",
-            "local_ai_router",
+            "local_ai_benchmark_db",
         ),
         # Preserve the existing PostgreSQL role for now as well.
         username=os.getenv(
             "LOCAL_AI_BENCHMARK_DB_USER",
-            "local_ai_router_app",
+            "local_ai_benchmark_app",
         ),
         password=database_password,
     )
