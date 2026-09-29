@@ -1,7 +1,7 @@
 """rename benchmark run git commit field
 
 Revision ID: 37b5eafe9022
-Revises: b14cf72161b1
+Revises: 47339f26ea7f
 Create Date: 2026-09-28 19:22:18.291938
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "37b5eafe9022"
-down_revision: Union[str, Sequence[str], None] = "b14cf72161b1"
+down_revision: Union[str, Sequence[str], None] = "47339f26ea7f"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
