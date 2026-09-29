@@ -3,7 +3,8 @@ SQLAlchemy model for externally published benchmark reference results.
 
 Reference results are deliberately stored separately from locally executed
 BenchmarkRun data. This prevents vendor-, paper-, or benchmark-published
-scores from being mistaken for measurements produced by the Local AI Router.
+scores from being mistaken for measurements produced locally by the Benchmark
+Service.
 
 Each row represents one reported metric for one model variant against one
 benchmark definition.
