@@ -1,7 +1,7 @@
 """
 Tests for the Ollama inference adapter.
 
-These tests verify translation between Local AI Router inference contracts and
+These tests verify translation between Benchmark Service inference contracts and
 Ollama's backend-specific HTTP API without requiring a running Ollama service
 or a loaded model.
 """
