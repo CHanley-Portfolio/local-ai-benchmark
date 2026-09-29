@@ -50,7 +50,7 @@ class BenchmarkCase(BenchmarkBase):
     Persist one version of a benchmark prompt or evaluation task.
 
     The external_case_id is the stable identifier used by the source benchmark
-    or by our Local AI Router benchmark dataset.
+    or by a Local AI Benchmark project-specific dataset.
 
     Combining benchmark definition, external case ID, and case version prevents
     two distinct versions of the same benchmark task from being confused.
