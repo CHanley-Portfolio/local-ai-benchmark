@@ -23,8 +23,10 @@ from local_ai_benchmark import BenchmarkCaseExecution, BenchmarkRunSummary
 from local_ai_benchmark.config import get_benchmark_database_settings
 from local_ai_benchmark.inference import InferenceResult
 from local_ai_benchmark.persistence import (
+    BenchmarkCaseScorePersistence,
     BenchmarkRunPersistenceRequest,
     BenchmarkRunRecorder,
+    BenchmarkScoreRecorder,
 )
 from local_ai_benchmark.persistence.database import create_database_engine
 from local_ai_benchmark.persistence.models import (
@@ -36,6 +38,7 @@ from local_ai_benchmark.persistence.models import (
 from local_ai_benchmark.persistence.seeding import (
     seed_benchmark_test_data,
 )
+from local_ai_benchmark.scoring import BenchmarkScoringRequest, ExactScorer
 
 
 @pytest.fixture
@@ -455,3 +458,154 @@ def test_benchmark_run_recorder_persists_failed_case_diagnostics(
     )
 
     assert persisted_performance is None
+
+def test_exact_score_is_persisted_with_criterion_evidence(
+    benchmark_database_session: Session,
+) -> None:
+    """
+    Verify execution, exact scoring, and quality persistence work together.
+
+    This integration test exercises the actual PostgreSQL schema and the
+    production scoring/persistence contracts rather than manually inserting
+    quality rows.
+
+    The lifecycle under test is:
+
+        BenchmarkRunSummary
+            -> BenchmarkRunRecorder
+            -> BenchmarkCaseResult
+            -> ExactScorer
+            -> BenchmarkCaseScore
+            -> BenchmarkScoreRecorder
+            -> PostgreSQL quality records
+
+    The surrounding test transaction is rolled back by the fixture so no
+    synthetic benchmark history remains after the test completes.
+    """
+
+    seed_ids = seed_benchmark_test_data(benchmark_database_session)
+
+    started_at = datetime(
+        2026,
+        1,
+        3,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+    completed_at = started_at + timedelta(seconds=1)
+
+    # First persist the execution evidence exactly as a real benchmark run
+    # would. At this stage quality has not yet been evaluated.
+    run_summary = BenchmarkRunSummary(
+        benchmark_suite_id=seed_ids.benchmark_suite_id,
+        status="completed",
+        started_at=started_at,
+        completed_at=completed_at,
+        case_executions=(
+            BenchmarkCaseExecution(
+                benchmark_case_id=seed_ids.benchmark_case_id,
+                status="completed",
+                started_at=started_at,
+                completed_at=completed_at,
+                inference_result=InferenceResult(
+                    model_name="seed_test_model:q4",
+                    response_text="ready",
+                    total_duration_ns=1_000_000_000,
+                    output_token_count=1,
+                    output_eval_duration_ns=100_000_000,
+                ),
+            ),
+        ),
+        total_case_count=1,
+        completed_case_count=1,
+        failed_case_count=0,
+    )
+
+    run_persistence_result = BenchmarkRunRecorder(
+        benchmark_database_session
+    ).persist_run(
+        BenchmarkRunPersistenceRequest(
+            benchmark_run_summary=run_summary,
+            model_profile_id=seed_ids.model_profile_id,
+            hardware_profile_id=seed_ids.hardware_profile_id,
+            runtime_profile_id=seed_ids.runtime_profile_id,
+            context_profile_id=seed_ids.context_profile_id,
+            source_git_commit="exact-score-integration-test",
+            run_mode="integration_test",
+        )
+    )
+
+    benchmark_case_result_id = (
+        run_persistence_result.benchmark_case_result_ids[0]
+    )
+
+    # Score the observed response through the real deterministic scorer.
+    benchmark_case_score = ExactScorer().score(
+        BenchmarkScoringRequest(
+            benchmark_case_id=seed_ids.benchmark_case_id,
+            evaluation_target="model",
+            scoring_method="exact",
+            response_text="ready",
+            expected_answer="ready",
+        )
+    )
+
+    # Persist the scoring evidence against the already-created case result.
+    BenchmarkScoreRecorder(
+        benchmark_database_session
+    ).persist_case_score(
+        BenchmarkCaseScorePersistence(
+            benchmark_case_result_id=benchmark_case_result_id,
+            benchmark_case_score=benchmark_case_score,
+        )
+    )
+
+    # Reload the aggregate case result from PostgreSQL.
+    persisted_case_result = benchmark_database_session.get(
+        BenchmarkCaseResult,
+        benchmark_case_result_id,
+    )
+
+    assert persisted_case_result is not None
+    assert persisted_case_result.raw_model_response == "ready"
+
+    assert (
+        persisted_case_result.normalized_quality_score
+        == Decimal("100")
+    )
+    assert persisted_case_result.passed is True
+
+    assert persisted_case_result.diagnostic_text == (
+        "Observed value matches expected value"
+    )
+
+    # Query the criterion-level evidence independently to prove that the
+    # aggregate score was not stored without its underlying scoring record.
+    persisted_quality_scores = benchmark_database_session.scalars(
+        select(BenchmarkQualityScore).where(
+            BenchmarkQualityScore.benchmark_case_result_id
+            == benchmark_case_result_id
+        )
+    ).all()
+
+    assert len(persisted_quality_scores) == 1
+
+    persisted_quality_score = persisted_quality_scores[0]
+
+    assert persisted_quality_score.criterion_name == (
+        "response_exact_match"
+    )
+
+    assert persisted_quality_score.raw_score == Decimal("1")
+    assert persisted_quality_score.max_score == Decimal("1")
+    assert persisted_quality_score.normalized_score == Decimal("100")
+    assert persisted_quality_score.passed is True
+
+    assert persisted_quality_score.scorer_type == "exact"
+    assert persisted_quality_score.scorer_version == "1"
+
+    assert persisted_quality_score.details == {
+        "expected_value": "ready",
+        "observed_value": "ready",
+    }

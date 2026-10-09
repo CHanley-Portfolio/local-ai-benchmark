@@ -226,7 +226,7 @@ def seed_benchmark_test_data(database_session: Session) -> BenchmarkSeedIds:
             "benchmark_category_id": (benchmark_category.benchmark_category_id),
             "evaluation_target": "model",
             "prompt_text": "Return exactly the word ready.",
-            "scoring_method": "exact_match",
+            "scoring_method": "exact",
             "expected_answer": "ready",
             "critical": False,
         },

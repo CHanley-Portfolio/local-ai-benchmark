@@ -12,6 +12,7 @@ from .data import (
     BenchmarkRunPersistenceResult as BenchmarkRunPersistenceResult,
 )
 from .run_recorder import BenchmarkRunRecorder as BenchmarkRunRecorder
+from .score_recorder import BenchmarkScoreRecorder as BenchmarkScoreRecorder
 
 __all__ = [
     "BenchmarkRunPersistenceRequest",
