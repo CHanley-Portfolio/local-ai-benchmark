@@ -21,15 +21,10 @@ from .models import (
     BenchmarkRun,
 )
 
-
 _NANOSECONDS_PER_SECOND = Decimal("1000000000")
 
 
-def _calculate_tokens_per_second(
-    *,
-    token_count: int | None,
-    duration_ns: int | None,
-) -> Decimal | None:
+def _calculate_tokens_per_second(*, token_count: int | None, duration_ns: int | None) -> Decimal | None:
     """
     Convert token count and nanosecond duration into tokens per second.
     """

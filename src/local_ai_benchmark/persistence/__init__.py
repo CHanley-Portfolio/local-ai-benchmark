@@ -3,6 +3,9 @@ Benchmark Service persistence infrastructure.
 """
 
 from .data import (
+    BenchmarkCaseScorePersistence as BenchmarkCaseScorePersistence,
+)
+from .data import (
     BenchmarkRunPersistenceRequest as BenchmarkRunPersistenceRequest,
 )
 from .data import (
@@ -14,4 +17,6 @@ __all__ = [
     "BenchmarkRunPersistenceRequest",
     "BenchmarkRunPersistenceResult",
     "BenchmarkRunRecorder",
+    "BenchmarkCaseScorePersistence",
+    "BenchmarkScoreRecorder",
 ]
