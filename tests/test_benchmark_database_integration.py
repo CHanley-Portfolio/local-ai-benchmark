@@ -16,6 +16,7 @@ from decimal import Decimal
 from typing import Generator
 
 import pytest
+from local_ai_benchmark.application import BenchmarkRunCoordinator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -38,7 +39,11 @@ from local_ai_benchmark.persistence.models import (
 from local_ai_benchmark.persistence.seeding import (
     seed_benchmark_test_data,
 )
-from local_ai_benchmark.scoring import BenchmarkScoringRequest, ExactScorer
+from local_ai_benchmark.scoring import (
+    BenchmarkScoringRequest,
+    ExactScorer,
+    create_default_scorer_registry,
+)
 
 
 @pytest.fixture
@@ -609,3 +614,390 @@ def test_exact_score_is_persisted_with_criterion_evidence(
         "expected_value": "ready",
         "observed_value": "ready",
     }
+
+def test_benchmark_run_coordinator_persists_and_scores_completed_case(
+    benchmark_database_session: Session,
+) -> None:
+    """
+    Verify the application coordinator completes the execution-to-score path.
+
+    The coordinator should:
+
+    1. persist runner execution evidence;
+    2. resolve the configured scorer;
+    3. evaluate the completed benchmark case;
+    4. persist aggregate quality;
+    5. persist criterion-level scoring evidence.
+
+    This exercises the real PostgreSQL test database.
+    """
+
+    seed_ids = seed_benchmark_test_data(benchmark_database_session)
+
+    started_at = datetime(
+        2026,
+        1,
+        4,
+        12,
+        0,
+        tzinfo=timezone.utc,
+    )
+    completed_at = started_at + timedelta(seconds=1)
+
+    run_summary = BenchmarkRunSummary(
+        benchmark_suite_id=seed_ids.benchmark_suite_id,
+        status="completed",
+        started_at=started_at,
+        completed_at=completed_at,
+        case_executions=(
+            BenchmarkCaseExecution(
+                benchmark_case_id=seed_ids.benchmark_case_id,
+                status="completed",
+                started_at=started_at,
+                completed_at=completed_at,
+                inference_result=InferenceResult(
+                    model_name="seed_test_model:q4",
+                    response_text="ready",
+                    total_duration_ns=1_000_000_000,
+                    output_token_count=1,
+                    output_eval_duration_ns=100_000_000,
+                ),
+            ),
+        ),
+        total_case_count=1,
+        completed_case_count=1,
+        failed_case_count=0,
+    )
+
+    coordinator = BenchmarkRunCoordinator(
+        database_session=benchmark_database_session,
+        scorer_registry=create_default_scorer_registry(),
+    )
+
+    persistence_result = coordinator.persist_and_score_run(
+        BenchmarkRunPersistenceRequest(
+            benchmark_run_summary=run_summary,
+            model_profile_id=seed_ids.model_profile_id,
+            hardware_profile_id=seed_ids.hardware_profile_id,
+            runtime_profile_id=seed_ids.runtime_profile_id,
+            context_profile_id=seed_ids.context_profile_id,
+            source_git_commit="coordinator-success",
+            run_mode="integration_test",
+        ),
+        scoring_requests=(
+            BenchmarkScoringRequest(
+                benchmark_case_id=seed_ids.benchmark_case_id,
+                evaluation_target="model",
+                scoring_method="exact",
+                response_text="ready",
+                expected_answer="ready",
+            ),
+        ),
+    )
+
+    assert persistence_result.benchmark_run_id > 0
+    assert len(persistence_result.benchmark_case_result_ids) == 1
+
+    benchmark_case_result_id = (
+        persistence_result.benchmark_case_result_ids[0]
+    )
+
+    persisted_case_result = benchmark_database_session.get(
+        BenchmarkCaseResult,
+        benchmark_case_result_id,
+    )
+
+    assert persisted_case_result is not None
+    assert persisted_case_result.raw_model_response == "ready"
+    assert persisted_case_result.normalized_quality_score == Decimal("100")
+    assert persisted_case_result.passed is True
+
+    persisted_quality_scores = benchmark_database_session.scalars(
+        select(BenchmarkQualityScore).where(
+            BenchmarkQualityScore.benchmark_case_result_id
+            == benchmark_case_result_id
+        )
+    ).all()
+
+    assert len(persisted_quality_scores) == 1
+
+    persisted_quality_score = persisted_quality_scores[0]
+
+    assert persisted_quality_score.criterion_name == (
+        "response_exact_match"
+    )
+    assert persisted_quality_score.normalized_score == Decimal("100")
+    assert persisted_quality_score.scorer_type == "exact"
+    assert persisted_quality_score.scorer_version == "1"
+
+def test_benchmark_run_coordinator_rejects_duplicate_scoring_requests(
+    benchmark_database_session: Session,
+) -> None:
+    """
+    Verify duplicate scoring requests fail before benchmark history is written.
+
+    A benchmark case must have at most one scoring request during a run.
+    Ambiguous scoring input must never result in partially persisted history.
+    """
+
+    seed_ids = seed_benchmark_test_data(benchmark_database_session)
+
+    started_at = datetime(
+        2026,
+        1,
+        4,
+        13,
+        0,
+        tzinfo=timezone.utc,
+    )
+    completed_at = started_at + timedelta(seconds=1)
+
+    run_summary = BenchmarkRunSummary(
+        benchmark_suite_id=seed_ids.benchmark_suite_id,
+        status="completed",
+        started_at=started_at,
+        completed_at=completed_at,
+        case_executions=(
+            BenchmarkCaseExecution(
+                benchmark_case_id=seed_ids.benchmark_case_id,
+                status="completed",
+                started_at=started_at,
+                completed_at=completed_at,
+                inference_result=InferenceResult(
+                    model_name="seed_test_model:q4",
+                    response_text="ready",
+                    total_duration_ns=1_000_000_000,
+                    output_token_count=1,
+                    output_eval_duration_ns=100_000_000,
+                ),
+            ),
+        ),
+        total_case_count=1,
+        completed_case_count=1,
+        failed_case_count=0,
+    )
+
+    persistence_request = BenchmarkRunPersistenceRequest(
+        benchmark_run_summary=run_summary,
+        model_profile_id=seed_ids.model_profile_id,
+        hardware_profile_id=seed_ids.hardware_profile_id,
+        runtime_profile_id=seed_ids.runtime_profile_id,
+        context_profile_id=seed_ids.context_profile_id,
+        source_git_commit="coordinator-duplicate-score",
+        run_mode="integration_test",
+    )
+
+    scoring_request = BenchmarkScoringRequest(
+        benchmark_case_id=seed_ids.benchmark_case_id,
+        evaluation_target="model",
+        scoring_method="exact",
+        response_text="ready",
+        expected_answer="ready",
+    )
+
+    coordinator = BenchmarkRunCoordinator(
+        database_session=benchmark_database_session,
+        scorer_registry=create_default_scorer_registry(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Duplicate scoring request",
+    ):
+        coordinator.persist_and_score_run(
+            persistence_request,
+            scoring_requests=(
+                scoring_request,
+                scoring_request,
+            ),
+        )
+
+    # Duplicate validation occurs before BenchmarkRunRecorder executes, so no
+    # partial BenchmarkRun should exist.
+    persisted_run = benchmark_database_session.scalar(
+        select(BenchmarkRun).where(
+            BenchmarkRun.source_git_commit
+            == "coordinator-duplicate-score"
+        )
+    )
+
+    assert persisted_run is None
+
+def test_benchmark_run_coordinator_can_roll_back_partial_run_on_scoring_failure(
+    benchmark_database_session: Session,
+) -> None:
+    """
+    Verify a scoring failure can roll back already-flushed execution evidence.
+
+    BenchmarkRunRecorder performs flushes before scoring begins. Therefore an
+    application-level failure must remain transactionally reversible.
+
+    A PostgreSQL SAVEPOINT is used here so the integration-test fixture's outer
+    transaction remains active after the intentional failure.
+    """
+
+    seed_ids = seed_benchmark_test_data(benchmark_database_session)
+
+    started_at = datetime(
+        2026,
+        1,
+        4,
+        14,
+        0,
+        tzinfo=timezone.utc,
+    )
+    completed_at = started_at + timedelta(seconds=1)
+
+    run_summary = BenchmarkRunSummary(
+        benchmark_suite_id=seed_ids.benchmark_suite_id,
+        status="completed",
+        started_at=started_at,
+        completed_at=completed_at,
+        case_executions=(
+            BenchmarkCaseExecution(
+                benchmark_case_id=seed_ids.benchmark_case_id,
+                status="completed",
+                started_at=started_at,
+                completed_at=completed_at,
+                inference_result=InferenceResult(
+                    model_name="seed_test_model:q4",
+                    response_text="ready",
+                    total_duration_ns=1_000_000_000,
+                    output_token_count=1,
+                    output_eval_duration_ns=100_000_000,
+                ),
+            ),
+        ),
+        total_case_count=1,
+        completed_case_count=1,
+        failed_case_count=0,
+    )
+
+    coordinator = BenchmarkRunCoordinator(
+        database_session=benchmark_database_session,
+        scorer_registry=create_default_scorer_registry(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="does not have a scoring request",
+    ):
+        # begin_nested() creates a PostgreSQL SAVEPOINT.
+        #
+        # BenchmarkRunRecorder will successfully INSERT and flush its rows
+        # before the coordinator discovers that scoring input is missing.
+        #
+        # When the ValueError escapes this context manager, SQLAlchemy rolls
+        # the SAVEPOINT back automatically.
+        with benchmark_database_session.begin_nested():
+            coordinator.persist_and_score_run(
+                BenchmarkRunPersistenceRequest(
+                    benchmark_run_summary=run_summary,
+                    model_profile_id=seed_ids.model_profile_id,
+                    hardware_profile_id=seed_ids.hardware_profile_id,
+                    runtime_profile_id=seed_ids.runtime_profile_id,
+                    context_profile_id=seed_ids.context_profile_id,
+                    source_git_commit="coordinator-rollback-test",
+                    run_mode="integration_test",
+                ),
+                scoring_requests=(),
+            )
+
+    persisted_run = benchmark_database_session.scalar(
+        select(BenchmarkRun).where(
+            BenchmarkRun.source_git_commit
+            == "coordinator-rollback-test"
+        )
+    )
+
+    assert persisted_run is None
+
+def test_benchmark_run_coordinator_preserves_failed_case_without_scoring(
+    benchmark_database_session: Session,
+) -> None:
+    """
+    Verify failed inference is persisted without fabricated quality evidence.
+
+    An inference failure is useful benchmark history, but there is no valid
+    model response to quality-score. The coordinator should therefore preserve
+    the failure and continue without requiring a BenchmarkScoringRequest.
+    """
+
+    seed_ids = seed_benchmark_test_data(benchmark_database_session)
+
+    started_at = datetime(
+        2026,
+        1,
+        4,
+        15,
+        0,
+        tzinfo=timezone.utc,
+    )
+    completed_at = started_at + timedelta(seconds=1)
+
+    run_summary = BenchmarkRunSummary(
+        benchmark_suite_id=seed_ids.benchmark_suite_id,
+        status="completed_with_failures",
+        started_at=started_at,
+        completed_at=completed_at,
+        case_executions=(
+            BenchmarkCaseExecution(
+                benchmark_case_id=seed_ids.benchmark_case_id,
+                status="failed",
+                started_at=started_at,
+                completed_at=completed_at,
+                inference_result=None,
+                error_type="RuntimeError",
+                error_message="Synthetic coordinator inference failure.",
+            ),
+        ),
+        total_case_count=1,
+        completed_case_count=0,
+        failed_case_count=1,
+    )
+
+    coordinator = BenchmarkRunCoordinator(
+        database_session=benchmark_database_session,
+        scorer_registry=create_default_scorer_registry(),
+    )
+
+    persistence_result = coordinator.persist_and_score_run(
+        BenchmarkRunPersistenceRequest(
+            benchmark_run_summary=run_summary,
+            model_profile_id=seed_ids.model_profile_id,
+            hardware_profile_id=seed_ids.hardware_profile_id,
+            runtime_profile_id=seed_ids.runtime_profile_id,
+            context_profile_id=seed_ids.context_profile_id,
+            source_git_commit="coordinator-failed-case",
+            run_mode="integration_test",
+        ),
+        scoring_requests=(),
+    )
+
+    benchmark_case_result_id = (
+        persistence_result.benchmark_case_result_ids[0]
+    )
+
+    persisted_case_result = benchmark_database_session.get(
+        BenchmarkCaseResult,
+        benchmark_case_result_id,
+    )
+
+    assert persisted_case_result is not None
+    assert persisted_case_result.result_status == "failed"
+    assert persisted_case_result.error_type == "RuntimeError"
+    assert persisted_case_result.error_message == (
+        "Synthetic coordinator inference failure."
+    )
+
+    assert persisted_case_result.normalized_quality_score is None
+    assert persisted_case_result.passed is None
+
+    persisted_quality_scores = benchmark_database_session.scalars(
+        select(BenchmarkQualityScore).where(
+            BenchmarkQualityScore.benchmark_case_result_id
+            == benchmark_case_result_id
+        )
+    ).all()
+
+    assert persisted_quality_scores == []
