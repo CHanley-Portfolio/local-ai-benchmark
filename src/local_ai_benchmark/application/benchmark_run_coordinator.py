@@ -27,13 +27,14 @@ Individual components remain responsible for their own domains:
 from sqlalchemy.orm import Session
 
 from local_ai_benchmark.persistence import (
+    BenchmarkCaseScorePersistence,
     BenchmarkRunPersistenceRequest,
+    BenchmarkRunPersistenceResult,
     BenchmarkRunRecorder,
     BenchmarkScoreRecorder,
-    BenchmarkCaseScorePersistence,
-    BenchmarkRunPersistenceResult,
 )
 from local_ai_benchmark.scoring import BenchmarkScorerRegistry, BenchmarkScoringRequest
+
 
 class BenchmarkRunCoordinator:
     """

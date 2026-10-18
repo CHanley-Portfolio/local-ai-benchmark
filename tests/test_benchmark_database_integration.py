@@ -10,18 +10,15 @@ transaction and rolled back afterward so repeated test execution does not
 pollute benchmark history.
 """
 
-import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Generator
 
 import pytest
-from local_ai_benchmark.application import BenchmarkRunCoordinator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from local_ai_benchmark import BenchmarkCaseExecution, BenchmarkRunSummary
-from local_ai_benchmark.config import get_benchmark_database_settings
+from local_ai_benchmark.application import BenchmarkRunCoordinator
 from local_ai_benchmark.inference import InferenceResult
 from local_ai_benchmark.persistence import (
     BenchmarkCaseScorePersistence,
@@ -29,7 +26,6 @@ from local_ai_benchmark.persistence import (
     BenchmarkRunRecorder,
     BenchmarkScoreRecorder,
 )
-from local_ai_benchmark.persistence.database import create_database_engine
 from local_ai_benchmark.persistence.models import (
     BenchmarkCaseResult,
     BenchmarkPerformanceMetric,
@@ -44,50 +40,6 @@ from local_ai_benchmark.scoring import (
     ExactScorer,
     create_default_scorer_registry,
 )
-
-
-@pytest.fixture
-def benchmark_database_session() -> Generator[Session, None, None]:
-    """
-    Provide a transaction-isolated PostgreSQL integration-test session.
-
-    The fixture skips automatically when database credentials are unavailable
-    or when the configured database is not ``local_ai_benchmark_test``.
-
-    This keeps the normal unit-test suite safe on machines and CI jobs that do
-    not currently provide PostgreSQL integration infrastructure.
-
-    Every database change made through this session is rolled back when the
-    test finishes.
-    """
-
-    if not os.getenv("LOCAL_AI_BENCHMARK_DB_PASSWORD"):
-        pytest.skip("PostgreSQL integration test requires LOCAL_AI_BENCHMARK_DB_PASSWORD.")
-
-    database_settings = get_benchmark_database_settings()
-
-    if database_settings.database_name != "local_ai_benchmark_test":
-        pytest.skip(
-            "PostgreSQL benchmark integration tests may only run against local_ai_benchmark_test."
-        )
-
-    database_engine = create_database_engine(database_settings)
-
-    try:
-        with database_engine.connect() as database_connection:
-            database_transaction = database_connection.begin()
-
-            try:
-                with Session(
-                    bind=database_connection,
-                    autoflush=False,
-                    expire_on_commit=False,
-                ) as database_session:
-                    yield database_session
-            finally:
-                database_transaction.rollback()
-    finally:
-        database_engine.dispose()
 
 
 def test_multiple_benchmark_runs_are_preserved_and_queryable(
