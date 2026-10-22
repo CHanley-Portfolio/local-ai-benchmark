@@ -19,6 +19,7 @@ def test_inference_request_uses_explicit_application_fields() -> None:
         model_name="test-model",
         user_message="Test prompt",
         thinking_enabled=True,
+        context_text="Supplied project context",
         temperature=Decimal("0.2"),
         top_p=Decimal("0.9"),
         seed=42,
@@ -27,6 +28,7 @@ def test_inference_request_uses_explicit_application_fields() -> None:
 
     assert inference_request.model_name == "test-model"
     assert inference_request.user_message == "Test prompt"
+    assert inference_request.context_text == "Supplied project context"
     assert inference_request.thinking_enabled is True
     assert inference_request.temperature == Decimal("0.2")
     assert inference_request.top_p == Decimal("0.9")
@@ -45,6 +47,7 @@ def test_inference_request_optional_generation_settings_default_to_none() -> Non
         thinking_enabled=False,
     )
 
+    assert inference_request.context_text is None
     assert inference_request.temperature is None
     assert inference_request.top_p is None
     assert inference_request.seed is None

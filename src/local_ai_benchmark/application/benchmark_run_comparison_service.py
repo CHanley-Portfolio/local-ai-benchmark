@@ -129,7 +129,7 @@ class BenchmarkRunComparisonService:
                 ),
                 (
                     comparison_performance.total_duration_ns
-                    if baseline_performance is not None
+                    if comparison_performance is not None
                     else None
                 ),
             )

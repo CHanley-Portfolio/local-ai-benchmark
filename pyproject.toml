@@ -9,9 +9,11 @@ description = "Independent local AI model benchmarking and evaluation service."
 requires-python = ">=3.12"
 
 dependencies = [
+    "fastapi",
     "httpx",
     "sqlalchemy",
     "psycopg[binary]",
+    "uvicorn[standard]",
 ]
 
 [project.scripts]

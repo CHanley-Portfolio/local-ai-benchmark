@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from local_ai_benchmark.application.data import BenchmarkCasePlan, BenchmarkExecutionRequest
 from local_ai_benchmark.execution import BenchmarkCaseRequest
+from local_ai_benchmark.fixtures import BenchmarkContextFixtureLoader
 from local_ai_benchmark.inference import InferenceRequest
 from local_ai_benchmark.persistence.models import (
     BenchmarkCase,
@@ -35,16 +36,20 @@ class BenchmarkExecutionRequestBuilder:
     application contracts used by BenchmarkExecutionService.
     """
 
-    def __init__(self, database_session: Session) -> None:
+    def __init__(self, database_session: Session, context_fixture_loader: BenchmarkContextFixtureLoader | None = None) -> None:
         """
         Create request builder.
 
         Args:
             database_session:
                 Active SQLAlchemy session used to read benchmark configuration.
+
+            context_fixture_builder:
+                Optional loader used by benchmark cases that reference a versioned local context fixture.
         """
 
         self._database_session = database_session
+        self._context_fixture_loader = context_fixture_loader
     
     def build(
         self,
@@ -151,8 +156,8 @@ class BenchmarkExecutionRequestBuilder:
             notes=notes,    
         )
 
-    @staticmethod
-    def _build_case_plan(*, benchmark_case: BenchmarkCase, backend_model_name: str, model_profile: ModelProfile) -> BenchmarkCasePlan:
+
+    def _build_case_plan(self,*, benchmark_case: BenchmarkCase, backend_model_name: str, model_profile: ModelProfile) -> BenchmarkCasePlan:
         """
         Convert one persisted BenchmarkCase into an application case plan.
         """
@@ -167,16 +172,18 @@ class BenchmarkExecutionRequestBuilder:
                 f"evaluation_target='{benchmark_case.evaluation_target}'."
             )
 
-        # Context-fixture loading is intentionally rejected until the context
-        # fixture pipeline is implemented. Silently ignoring the fixture would
-        # produce an invalid benchmark result.
+        context_text: str | None = None
+
         if benchmark_case.context_fixture is not None:
-            raise ValueError(
-                "Persisted benchmark case "
-                f"{benchmark_case.external_case_id} requires context fixture "
-                f"'{benchmark_case.context_fixture}', but context fixture "
-                "loading is not implemented yet."
-            )
+            if self._context_fixture_loader is None:
+                raise ValueError(
+                    "Persisted benchmark case "
+                    f"{benchmark_case.external_case_id} requires context fixture "
+                    f"'{benchmark_case.context_fixture}', but context fixture "
+                    "loading is not implemented yet."
+                )
+
+            context_text = self._context_fixture_loader.load(benchmark_case.context_fixture)
 
         expected_criteria = (
             BenchmarkExecutionRequestBuilder._normalize_expected_criteria(
@@ -190,6 +197,7 @@ class BenchmarkExecutionRequestBuilder:
             thinking_enabled=(
                 model_profile.reasoning_enabled is True
             ),
+            context_text=context_text,
             temperature=model_profile.temperature,
             top_p=model_profile.top_p,
             seed=model_profile.seed,
@@ -208,6 +216,7 @@ class BenchmarkExecutionRequestBuilder:
             ),
             evaluation_target=benchmark_case.evaluation_target,
             scoring_method=benchmark_case.scoring_method,
+            context_text=context_text,
             expected_answer=benchmark_case.expected_answer,
             expected_route_mode=benchmark_case.expected_route_mode,
             expected_criteria=expected_criteria,

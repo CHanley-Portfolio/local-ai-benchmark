@@ -90,6 +90,68 @@ def test_ollama_client_translates_inference_request() -> None:
     assert captured_request_json["options"]["num_predict"] == 512
     assert captured_request_json["options"]["num_ctx"] == 8192
 
+def test_ollama_client_supplies_context_separately_from_question() -> None:
+    """
+    Verify supplied benchmark context accompanies the user question.
+    """
+
+    captured_request_json: dict = {}
+
+    async def handle_request(request: httpx.Request) -> httpx.Response:
+        nonlocal captured_request_json
+
+        captured_request_json = __import__("json").loads(
+            request.content.decode("utf-8")
+        )
+
+        return httpx.Response(
+            status_code=200,
+            json={
+                "model": "test-model",
+                "message": {
+                    "role": "assistant",
+                    "content": "PostgreSQL",
+                },
+            },
+        )
+
+    async def execute_test() -> None:
+        ollama_client = OllamaClient(
+            base_url="http://test-ollama",
+        )
+
+        await ollama_client._client.aclose()
+
+        ollama_client._client = httpx.AsyncClient(
+            base_url="http://test-ollama",
+            transport=httpx.MockTransport(handle_request),
+        )
+
+        try:
+            await ollama_client.chat(
+                InferenceRequest(
+                    model_name="test-model",
+                    user_message="Which database should be used?",
+                    thinking_enabled=False,
+                    context_text="The application uses PostgreSQL.",
+                )
+            )
+        finally:
+            await ollama_client.close()
+
+    asyncio.run(execute_test())
+
+    assert captured_request_json["messages"] == [
+        {
+            "role": "user",
+            "content": (
+                "Supplied context:\n"
+                "The application uses PostgreSQL.\n\n"
+                "Question:\n"
+                "Which database should be used?"
+            ),
+        }
+    ]
 
 def test_ollama_client_normalizes_response_metrics() -> None:
     """
@@ -157,7 +219,6 @@ def test_ollama_client_normalizes_response_metrics() -> None:
         "done": True,
         "done_reason": "stop",
     }
-
 
 def test_explicit_inference_settings_override_backend_options() -> None:
     """

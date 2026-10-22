@@ -36,12 +36,18 @@ class BenchmarkCasePlan:
 
         expected_criteria:
             Ordered quality criteria used by rubric-style scorers.
+
+        context_text:
+            Optional source context supplied to the evaluated model and retained
+            separately for later scoring.
     """
 
     case_request: BenchmarkCaseRequest
 
     evaluation_target: str
     scoring_method: str
+
+    context_text: str | None = None
 
     expected_answer: str | None = None
     expected_route_mode: str | None = None

@@ -24,6 +24,8 @@ class BenchmarkScoringRequest:
     response_text: str | None = None
     route_mode: str | None = None
 
+    context_text: str | None = None
+
     expected_answer: str | None = None
     expected_route_mode: str | None = None
 

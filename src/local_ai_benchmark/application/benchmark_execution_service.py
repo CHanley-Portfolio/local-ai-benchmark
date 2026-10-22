@@ -205,6 +205,7 @@ class BenchmarkExecutionService:
                     evaluation_target = case_plan.evaluation_target,
                     scoring_method = case_plan.scoring_method,
                     response_text = case_execution.inference_result.response_text,
+                    context_text=case_plan.context_text,
                     expected_answer = case_plan.expected_answer,
                     expected_route_mode = case_plan.expected_route_mode,
                     expected_criteria = case_plan.expected_criteria,

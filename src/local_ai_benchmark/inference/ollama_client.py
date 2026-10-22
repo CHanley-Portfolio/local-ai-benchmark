@@ -91,12 +91,17 @@ class OllamaClient:
         if inference_request.max_output_tokens is not None:
             ollama_options["num_predict"] = inference_request.max_output_tokens
 
+        user_message_context = inference_request.user_message
+
+        if inference_request.context_text is not None:
+            user_message_context = "Supplied context:\n" f"{inference_request.context_text}\n\nQuestion:\n" f"{inference_request.user_message}"
+
         request_payload: dict[str, Any] = {
             "model": inference_request.model_name,
             "messages": [
                 {
                     "role": "user",
-                    "content": inference_request.user_message,
+                    "content": user_message_context,
                 }
             ],
             "think": inference_request.thinking_enabled,

@@ -28,6 +28,10 @@ class InferenceRequest:
         thinking_enabled:
             Whether reasoning/thinking behavior should be requested.
 
+        context_text:
+            Optional supplied benchmark context that should accompany the user
+            question without becoming part of the question itself.
+
         temperature:
             Optional sampling temperature.
 
@@ -48,6 +52,8 @@ class InferenceRequest:
     model_name: str
     user_message: str
     thinking_enabled: bool
+
+    context_text: str | None = None
 
     temperature: Decimal | None = None
     top_p: Decimal | None = None
